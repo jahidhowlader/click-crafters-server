@@ -13,6 +13,30 @@ const app = express()
 app.use(cors())
 app.use(express.json())
 
+const verifyJwtToken = (req, res, next) => {
+
+    const authorization = req.headers.authorization
+
+    if (!authorization) {
+        return res.status(401).send({ error: true, message: 'unauthorization user!' })
+    }
+
+    // Bearer Token
+    const token = authorization.split(' ')[1]
+
+    // verify a token symmetric
+    jwt.verify(token, process.env.ACCESS_TOKEN_SECRECT, (err, decoded) => {
+
+        if (err) {
+            return res.status(401).send({ error: true, message: 'unauthorization user!' })
+        }
+
+        req.decoded = decoded
+        next()
+    });
+
+}
+
 app.get('/', (req, res) => {
     res.send('Hello World!')
 })
@@ -40,6 +64,15 @@ async function run() {
         /**********************************
          * ****** COURSES PAGE RELATED API *******
          ********************************/
+        app.post('/jwt', (req, res) => {
+
+            const user = req.body
+
+            const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRECT,
+                { expiresIn: '1h' }
+            )
+            res.send({ token })
+        })
 
         /**********************************
          * ****** COURSES PAGE RELATED API *******
@@ -130,11 +163,16 @@ async function run() {
         *** SELECTED COURSE RELATED API ***
         ********************************/
         // get Selected Course when user select
-        app.get('/selected-courses', async (req, res) => {
+        app.get('/selected-courses', verifyJwtToken, async (req, res) => {
 
             const email = req.query.email
             if (!email) {
                 res.send([])
+            }
+
+            const decodedEmail = req.decoded.email
+            if (email !== decodedEmail) {
+                return res.status(403).send({ error: true, message: 'Forbidden Access!' })
             }
 
             const query = { email }
@@ -171,7 +209,7 @@ async function run() {
         // await client.close();
     }
 }
-run().catch(console.dir); 
+run().catch(console.dir);
 
 
 app.listen(PORT, () => {
