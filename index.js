@@ -62,7 +62,7 @@ async function run() {
         const selectedCoursesCollection = client.db('ClickCraftersDB').collection('selectedCourses')
 
         /**********************************
-         * ****** COURSES PAGE RELATED API *******
+         * ****** JWT RELATED API *******
          ********************************/
         app.post('/jwt', (req, res) => {
 
