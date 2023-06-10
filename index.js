@@ -18,7 +18,7 @@ const verifyJwtToken = (req, res, next) => {
     const authorization = req.headers.authorization
 
     if (!authorization) {
-        return res.status(401).send({ error: true, message: 'unauthorization user!' })
+        return res.status(401).send({ error: true, message: 'unauthorized access!' })
     }
 
     // Bearer Token
@@ -28,7 +28,7 @@ const verifyJwtToken = (req, res, next) => {
     jwt.verify(token, process.env.ACCESS_TOKEN_SECRECT, (err, decoded) => {
 
         if (err) {
-            return res.status(401).send({ error: true, message: 'unauthorization user!' })
+            return res.status(401).send({ error: true, message: 'unauthorized access!' })
         }
 
         req.decoded = decoded
@@ -87,10 +87,38 @@ async function run() {
         /**********************************
          * ****** USER RELATED API *******
          ********************************/
+        // Verify admin middleware
+        const verifyAdmin = async (req, res, next) => {
+
+            const email = req.decoded.email 
+            
+            const query = {email}
+            const user = await usersCollection.findOne(query)
+
+            if(user.role !== 'admin'){
+                return res.status(403).send({error: true, message: 'forbidden access!'})
+            }
+            next()
+        }
+
         // Get All User
-        app.get('/users', async (req, res) => {
+        app.get('/users', verifyJwtToken, verifyAdmin, async (req, res) => {
 
             const result = await usersCollection.find().toArray()
+            res.send(result)
+        })
+        // Check Admin User
+        app.get('/users/admin/:email', verifyJwtToken, async (req, res) => {
+
+            const email = req.params.email
+
+            if (req.decoded.email !== email) {
+                return res.send({ admin: false })
+            }
+
+            const query = { email }
+            const user = await usersCollection.findOne(query)
+            const result = { admin: user?.role === 'admin' }
             res.send(result)
         })
 
