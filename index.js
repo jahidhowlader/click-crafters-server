@@ -1,6 +1,7 @@
 const express = require('express')
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
-var cors = require('cors')
+const cors = require('cors')
+const jwt = require('jsonwebtoken');
 require('dotenv').config()
 
 const PORT = process.env.PORT || 5000
@@ -35,6 +36,10 @@ async function run() {
         const usersCollection = client.db('ClickCraftersDB').collection('users')
         const coursesCollection = client.db('ClickCraftersDB').collection('courses')
         const selectedCoursesCollection = client.db('ClickCraftersDB').collection('selectedCourses')
+
+        /**********************************
+         * ****** COURSES PAGE RELATED API *******
+         ********************************/
 
         /**********************************
          * ****** COURSES PAGE RELATED API *******
