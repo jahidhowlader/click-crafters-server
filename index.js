@@ -122,7 +122,7 @@ async function run() {
         })
 
         /**********************************
-        * *SELECTED COURSE RELATED API ***
+        *** SELECTED COURSE RELATED API ***
         ********************************/
         // get Selected Course when user select
         app.get('/selected-courses', async (req, res) => {
