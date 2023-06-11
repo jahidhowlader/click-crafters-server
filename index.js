@@ -62,6 +62,56 @@ async function run() {
         const selectedCoursesCollection = client.db('ClickCraftersDB').collection('selectedCourses')
 
         /**********************************
+        * ****** MIDDLEWARE *******
+        ********************************/
+        // Verify admin middleware
+        const verifyAdmin = async (req, res, next) => {
+
+            const email = req.decoded.email
+
+            const query = { email }
+            const user = await usersCollection.findOne(query)
+
+            if (user.role !== 'admin') {
+                return res.status(403).send({ error: true, message: 'forbidden access!' })
+            }
+            next()
+        }
+
+        // Verify Instructor middleware
+        const verifyInstructor = async (req, res, next) => {
+
+            const email = req.decoded.email
+
+            const query = { email }
+            const user = await usersCollection.findOne(query)
+
+            if (user.role !== 'instructor') {
+                return res.status(403).send({ error: true, message: 'forbidden access!' })
+            }
+            next()
+        }
+
+        /**********************************
+         * ****** INSTRUCTOR RELATED API *******
+         ********************************/
+        // Check Instructor User
+        app.get('/my-classes/instructor/:email', verifyJwtToken, async (req, res) => {
+
+            const email = req.params.email
+
+            if (req.decoded.email !== email) {
+                return res.send({ instructor: false })
+            }
+
+            const query = { email }
+            const user = await usersCollection.findOne(query)
+            const result = { instructor: user?.role === 'instructor' }
+            res.send(result)
+        })
+
+
+        /**********************************
          * ****** JWT RELATED API *******
          ********************************/
         app.post('/jwt', (req, res) => {
@@ -87,26 +137,13 @@ async function run() {
         /**********************************
          * ****** USER RELATED API *******
          ********************************/
-        // Verify admin middleware
-        const verifyAdmin = async (req, res, next) => {
-
-            const email = req.decoded.email 
-            
-            const query = {email}
-            const user = await usersCollection.findOne(query)
-
-            if(user.role !== 'admin'){
-                return res.status(403).send({error: true, message: 'forbidden access!'})
-            }
-            next()
-        }
-
         // Get All User
         app.get('/users', verifyJwtToken, verifyAdmin, async (req, res) => {
 
             const result = await usersCollection.find().toArray()
             res.send(result)
         })
+
         // Check Admin User
         app.get('/users/admin/:email', verifyJwtToken, async (req, res) => {
 
