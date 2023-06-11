@@ -60,6 +60,7 @@ async function run() {
         const usersCollection = client.db('ClickCraftersDB').collection('users')
         const coursesCollection = client.db('ClickCraftersDB').collection('courses')
         const selectedCoursesCollection = client.db('ClickCraftersDB').collection('selectedCourses')
+        const instructorManageCoursesCollection = client.db('ClickCraftersDB').collection('instructorManageCourses')
 
         /**********************************
         * ****** MIDDLEWARE *******
@@ -96,7 +97,7 @@ async function run() {
          * ****** INSTRUCTOR RELATED API *******
          ********************************/
         // Check Instructor User
-        app.get('/my-classes/instructor/:email', verifyJwtToken, async (req, res) => {
+        app.get('/users/instructor/:email', verifyJwtToken, async (req, res) => {
 
             const email = req.params.email
 
@@ -110,6 +111,24 @@ async function run() {
             res.send(result)
         })
 
+        // Get Instructor class 
+        app.get('/my-classes/', verifyJwtToken, verifyInstructor, async (req, res) => {
+
+            // const result = await instructorManageCoursesCollection.find()
+
+            res.send([1, 2, 3, 4])
+        })
+
+        // Post Instructor class 
+        app.post('/add-class', verifyJwtToken, verifyInstructor, async (req, res) => {
+
+            const doc = req.body
+
+            const result = await instructorManageCoursesCollection.insertOne(doc)
+
+            res.send(result)
+        })
+
 
         /**********************************
          * ****** JWT RELATED API *******
@@ -119,7 +138,7 @@ async function run() {
             const user = req.body
 
             const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRECT,
-                { expiresIn: '1h' }
+                { expiresIn: '12h' }
             )
             res.send({ token })
         })
@@ -131,6 +150,15 @@ async function run() {
         app.get('/courses', async (req, res) => {
 
             const result = await coursesCollection.find().toArray()
+            res.send(result)
+        })
+
+        // POST New Course on website
+        app.post('/courses', verifyJwtToken, verifyInstructor, async(req, res) => {
+
+            const newCourse = req.body
+
+            const result = await coursesCollection.insertOne(newCourse)
             res.send(result)
         })
 
