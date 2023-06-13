@@ -2,6 +2,7 @@ const express = require('express')
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 const cors = require('cors')
 const jwt = require('jsonwebtoken');
+const stripe = require('stripe')(process.env.PAYMENT_SECRET_KEY)
 require('dotenv').config()
 
 const PORT = process.env.PORT || 5000
@@ -61,6 +62,8 @@ async function run() {
         const coursesCollection = client.db('ClickCraftersDB').collection('courses')
         const selectedCoursesCollection = client.db('ClickCraftersDB').collection('selectedCourses')
         const instructorManageCoursesCollection = client.db('ClickCraftersDB').collection('instructorManageCourses')
+        const ourInstructorCollection = client.db('ClickCraftersDB').collection('ourInstructor')
+        const verifyAddCourseByAdminCollection = client.db('ClickCraftersDB').collection('verifyAddCourseByAdmin')
 
         /**********************************
         * ****** MIDDLEWARE *******
@@ -96,6 +99,31 @@ async function run() {
         /**********************************
          * ****** INSTRUCTOR RELATED API *******
          ********************************/
+        // get Our Instructor
+        app.get('/instructor', async (req, res) => {
+
+            const result = await ourInstructorCollection.find().toArray()
+            res.send(result)
+        })
+
+        // Post Instructor when admin will select instructor as a role
+        app.post('/instructor', verifyJwtToken, verifyAdmin, async (req, res) => {
+
+            const instructorDetails = req.body
+
+            const query = {
+                email: instructorDetails.email
+            }
+
+            const exitingId = await ourInstructorCollection.findOne(query)
+            if (exitingId) {
+                return res.send({ message: "User is already exist" })
+            }
+
+            const result = await ourInstructorCollection.insertOne(instructorDetails)
+            res.send(result)
+        })
+
         // Check Instructor User
         app.get('/users/instructor/:email', verifyJwtToken, async (req, res) => {
 
@@ -112,11 +140,22 @@ async function run() {
         })
 
         // Get Instructor class 
-        app.get('/my-classes/', verifyJwtToken, verifyInstructor, async (req, res) => {
+        app.get('/my-classes', verifyJwtToken, verifyInstructor, async (req, res) => {
 
-            // const result = await instructorManageCoursesCollection.find()
+            const email = req.query.email
+            console.log(email);
+            if (!email) {
+                res.send([])
+            }
 
-            res.send([1, 2, 3, 4])
+            const decodedEmail = req.decoded.email
+            if (email !== decodedEmail) {
+                return res.status(403).send({ error: true, message: 'Forbidden Access!' })
+            }
+
+            const query = { instructors_email: email }
+            const result = await verifyAddCourseByAdminCollection.find(query).toArray()
+            res.send(result)
         })
 
         // Post Instructor class 
@@ -124,10 +163,13 @@ async function run() {
 
             const doc = req.body
 
-            const result = await instructorManageCoursesCollection.insertOne(doc)
+            const result = await verifyAddCourseByAdminCollection.insertOne(doc)
 
             res.send(result)
         })
+
+        // Update Course Details
+        // app.patch()
 
 
         /**********************************
@@ -144,6 +186,27 @@ async function run() {
         })
 
         /**********************************
+         * ******  *******
+         ********************************/
+        // Post User When created a new User
+        app.post('/users', async (req, res) => {
+
+            const users = req.body
+
+            const query = {
+                email: users.email
+            }
+
+            const exitingId = await usersCollection.findOne(query)
+            if (exitingId) {
+                return res.send({ message: "User is already exist" })
+            }
+
+            const result = await usersCollection.insertOne(users)
+            res.send(result)
+        })
+
+        /**********************************
          * ****** COURSES PAGE RELATED API *******
          ********************************/
         // Get All Courses have on website
@@ -154,7 +217,7 @@ async function run() {
         })
 
         // POST New Course on website
-        app.post('/courses', verifyJwtToken, verifyInstructor, async(req, res) => {
+        app.post('/courses', verifyJwtToken, verifyInstructor, async (req, res) => {
 
             const newCourse = req.body
 
@@ -163,7 +226,7 @@ async function run() {
         })
 
         /**********************************
-         * ****** USER RELATED API *******
+         * ****** Admin RELATED API *******
          ********************************/
         // Get All User
         app.get('/users', verifyJwtToken, verifyAdmin, async (req, res) => {
@@ -184,24 +247,6 @@ async function run() {
             const query = { email }
             const user = await usersCollection.findOne(query)
             const result = { admin: user?.role === 'admin' }
-            res.send(result)
-        })
-
-        // Post User When created a new User
-        app.post('/users', async (req, res) => {
-
-            const users = req.body
-
-            const query = {
-                email: users.email
-            }
-
-            const exitingId = await usersCollection.findOne(query)
-            if (exitingId) {
-                return res.send({ message: "User is already exist" })
-            }
-
-            const result = await usersCollection.insertOne(users)
             res.send(result)
         })
 
@@ -252,6 +297,52 @@ async function run() {
             res.send(result)
         })
 
+        // ADMIN Review RELATED API
+        app.get('/manage-classes', verifyJwtToken, verifyAdmin, async (req, res) => {
+
+            const query = {
+                status: "pending"
+            };
+            const cursor = await verifyAddCourseByAdminCollection.find(query).toArray();
+            res.send(cursor)
+        })
+
+        // Course Add After review
+        app.put('/manage-classes/approve/:_id', verifyJwtToken, verifyAdmin, async (req, res) => {
+
+            const _id = req.params._id
+            const body = req.body.updateCourseStatus
+
+            const query = {
+                _id: new ObjectId(_id)
+            }
+
+
+            const result = await coursesCollection.insertOne(body)
+
+            const updateDoc = {
+                $set: {
+                    status: 'approve'
+                },
+            };
+            await verifyAddCourseByAdminCollection.updateOne(query, updateDoc)
+            res.send(result)
+        })
+
+        // Course Delete After review
+        app.delete('/manage-classes/delete/:_id', verifyJwtToken, verifyAdmin, async (req, res) => {
+
+            const _id = req.params._id
+
+            const query = {
+                _id: new ObjectId(_id)
+            }
+            const result = await verifyAddCourseByAdminCollection.deleteOne(query)
+            res.send(result)
+        })
+
+
+
         /**********************************
         *** SELECTED COURSE RELATED API ***
         ********************************/
@@ -278,6 +369,8 @@ async function run() {
 
             const selectedCourse = req.body
 
+            // const query = 
+
             const result = await selectedCoursesCollection.insertOne(selectedCourse)
             res.send(result)
         })
@@ -290,6 +383,23 @@ async function run() {
             const query = { _id: new ObjectId(_id) }
             const result = await selectedCoursesCollection.deleteOne(query)
             res.send(result)
+        })
+
+        // Payment Intent
+        app.post("/create-payment-intent", verifyJwtToken, async (req, res) => {
+            const { price } = req.body;
+            const amount = +price * 100
+
+            // Create a PaymentIntent with the order amount and currency
+            const paymentIntent = await stripe.paymentIntents.create({
+                amount: amount,
+                currency: "usd",
+                payment_method_types: ['card']
+            });
+
+            res.send({
+                clientSecret: paymentIntent.client_secret,
+            });
         })
 
 
