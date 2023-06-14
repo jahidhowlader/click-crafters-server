@@ -2,8 +2,9 @@ const express = require('express')
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 const cors = require('cors')
 const jwt = require('jsonwebtoken');
-const stripe = require('stripe')(process.env.PAYMENT_SECRET_KEY)
 require('dotenv').config()
+const Stripe = require('stripe')
+const stripe = Stripe(process.env.PAYMENT_SECRET_KEY)
 
 const PORT = process.env.PORT || 5000
 
@@ -61,7 +62,7 @@ async function run() {
         const usersCollection = client.db('ClickCraftersDB').collection('users')
         const coursesCollection = client.db('ClickCraftersDB').collection('courses')
         const selectedCoursesCollection = client.db('ClickCraftersDB').collection('selectedCourses')
-        const instructorManageCoursesCollection = client.db('ClickCraftersDB').collection('instructorManageCourses')
+        const paymentCollection = client.db('ClickCraftersDB').collection('payment')
         const ourInstructorCollection = client.db('ClickCraftersDB').collection('ourInstructor')
         const verifyAddCourseByAdminCollection = client.db('ClickCraftersDB').collection('verifyAddCourseByAdmin')
 
@@ -369,8 +370,6 @@ async function run() {
 
             const selectedCourse = req.body
 
-            // const query = 
-
             const result = await selectedCoursesCollection.insertOne(selectedCourse)
             res.send(result)
         })
@@ -385,6 +384,7 @@ async function run() {
             res.send(result)
         })
 
+        // Payment Related API
         // Payment Intent
         app.post("/create-payment-intent", verifyJwtToken, async (req, res) => {
             const { price } = req.body;
@@ -394,7 +394,9 @@ async function run() {
             const paymentIntent = await stripe.paymentIntents.create({
                 amount: amount,
                 currency: "usd",
-                payment_method_types: ['card']
+                payment_method_types: [
+                    "card"
+                ]
             });
 
             res.send({
@@ -402,6 +404,44 @@ async function run() {
             });
         })
 
+        // Payment 
+        app.post('/payments', verifyJwtToken, async (req, res) => {
+
+            const payment = req.body
+
+            const result = await paymentCollection.insertOne(payment.paymentDetails)
+            res.send(result)
+        })
+
+        // Update student when you confirm payent Courses
+        app.patch('/course/:_id', async (req, res) => {
+
+            const _id = req.params._id
+            const body = req.body
+            console.log('update', body, _id);
+
+            const filter = { _id: new ObjectId(_id) }
+
+            const updateDoc = {
+                $set: {
+                    available_seat: parseFloat(body.available_seat - 1),
+                    students: parseFloat(body.students + 1)
+                },
+            };
+
+            const result = await coursesCollection.updateOne(filter, updateDoc)
+            res.send(result)
+        })
+
+        // Delete Course when you confirm payent Courses
+        app.delete('/course/:_id', async (req, res) => {
+
+            const _id = req.params._id
+
+            const query = { course_id: _id }
+            const result = await selectedCoursesCollection.deleteOne(query)
+            res.send(result)
+        })
 
 
         // Send a ping to confirm a successful connection
