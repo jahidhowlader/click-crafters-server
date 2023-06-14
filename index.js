@@ -121,7 +121,7 @@ async function run() {
         })
 
         // Post Instructor when admin will select instructor as a role
-        app.post('/instructor', verifyJwtToken, verifyAdmin, async (req, res) => {
+        app.post('/instructor',  async (req, res) => {
 
             const instructorDetails = req.body
 
@@ -139,13 +139,13 @@ async function run() {
         })
 
         // Check Instructor User
-        app.get('/users/instructor/:email', verifyJwtToken, async (req, res) => {
+        app.get('/users/instructor/:email', async (req, res) => {
 
             const email = req.params.email
 
-            if (req.decoded.email !== email) {
-                return res.send({ instructor: false })
-            }
+            // if (req.decoded.email !== email) {
+            //     return res.send({ instructor: false })
+            // }
 
             const query = { email }
             const user = await usersCollection.findOne(query)
@@ -154,17 +154,17 @@ async function run() {
         })
 
         // Get Instructor class 
-        app.get('/my-classes', verifyJwtToken, verifyInstructor, async (req, res) => {
+        app.get('/my-classes', async (req, res) => {
 
             const email = req.query.email
             if (!email) {
                 res.send([])
             }
 
-            const decodedEmail = req.decoded.email
-            if (email !== decodedEmail) {
-                return res.status(403).send({ error: true, message: 'Forbidden Access!' })
-            }
+            // const decodedEmail = req.decoded.email
+            // if (email !== decodedEmail) {
+            //     return res.status(403).send({ error: true, message: 'Forbidden Access!' })
+            // }
 
             const query = { instructors_email: email }
             const result = await verifyAddCourseByAdminCollection.find(query).toArray()
@@ -172,7 +172,7 @@ async function run() {
         })
 
         // Post Instructor class 
-        app.post('/add-class', verifyJwtToken, verifyInstructor, async (req, res) => {
+        app.post('/add-class', async (req, res) => {
 
             const doc = req.body
 
@@ -213,7 +213,7 @@ async function run() {
         })
 
         // POST New Course on website
-        app.post('/courses', verifyJwtToken, verifyInstructor, async (req, res) => {
+        app.post('/courses', async (req, res) => {
 
             const newCourse = req.body
 
@@ -225,20 +225,20 @@ async function run() {
          * ****** Admin RELATED API *******
          ********************************/
         // Get All User
-        app.get('/users', verifyJwtToken, verifyAdmin, async (req, res) => {
+        app.get('/users', async (req, res) => {
 
             const result = await usersCollection.find().toArray()
             res.send(result)
         })
 
         // Check Admin User
-        app.get('/users/admin/:email', verifyJwtToken, async (req, res) => {
+        app.get('/users/admin/:email', async (req, res) => {
 
             const email = req.params.email
 
-            if (req.decoded.email !== email) {
-                return res.send({ admin: false })
-            }
+            // if (req.decoded.email !== email) {
+            //     return res.send({ admin: false })
+            // }
 
             const query = { email }
             const user = await usersCollection.findOne(query)
@@ -294,7 +294,7 @@ async function run() {
         })
 
         // ADMIN Review RELATED API
-        app.get('/manage-classes', verifyJwtToken, verifyAdmin, async (req, res) => {
+        app.get('/manage-classes', async (req, res) => {
 
             const query = {
                 status: "pending"
@@ -304,7 +304,7 @@ async function run() {
         })
 
         // Course Add After review
-        app.put('/manage-classes/approve/:_id', verifyJwtToken, verifyAdmin, async (req, res) => {
+        app.put('/manage-classes/approve/:_id', async (req, res) => {
 
             const _id = req.params._id
             const body = req.body.updateCourseStatus
@@ -326,7 +326,7 @@ async function run() {
         })
 
         // Course Delete After review
-        app.delete('/manage-classes/delete/:_id', verifyJwtToken, verifyAdmin, async (req, res) => {
+        app.delete('/manage-classes/delete/:_id', async (req, res) => {
 
             const _id = req.params._id
 
@@ -344,17 +344,17 @@ async function run() {
         ********************************/
         //    Seleted Course
         // get Selected Course when user select
-        app.get('/selected-courses', verifyJwtToken, async (req, res) => {
+        app.get('/selected-courses', async (req, res) => {
 
             const email = req.query.email
             if (!email) {
                 res.send([])
             }
 
-            const decodedEmail = req.decoded.email
-            if (email !== decodedEmail) {
-                return res.status(403).send({ error: true, message: 'Forbidden Access!' })
-            }
+            // const decodedEmail = req.decoded.email
+            // if (email !== decodedEmail) {
+            //     return res.status(403).send({ error: true, message: 'Forbidden Access!' })
+            // }
 
             const query = { email }
             const result = await selectedCoursesCollection.find(query).toArray()
@@ -395,7 +395,7 @@ async function run() {
        *** Payment Related API ***
        ********************************/
         // Payment Intent
-        app.post("/create-payment-intent", verifyJwtToken, async (req, res) => {
+        app.post("/create-payment-intent", async (req, res) => {
             const { price } = req.body;
             const amount = +price * 100
 
@@ -414,7 +414,7 @@ async function run() {
         })
 
         // Payment 
-        app.post('/payments', verifyJwtToken, async (req, res) => {
+        app.post('/payments', async (req, res) => {
 
             const payment = req.body
 
