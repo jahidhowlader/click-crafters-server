@@ -98,6 +98,19 @@ async function run() {
         }
 
         /**********************************
+        * ****** JWT RELATED API *******
+        ********************************/
+        app.post('/jwt', (req, res) => {
+
+            const user = req.body
+
+            const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRECT,
+                { expiresIn: '12h' }
+            )
+            res.send({ token })
+        })
+
+        /**********************************
          * ****** INSTRUCTOR RELATED API *******
          ********************************/
         // get Our Instructor
@@ -144,7 +157,6 @@ async function run() {
         app.get('/my-classes', verifyJwtToken, verifyInstructor, async (req, res) => {
 
             const email = req.query.email
-            console.log(email);
             if (!email) {
                 res.send([])
             }
@@ -169,25 +181,8 @@ async function run() {
             res.send(result)
         })
 
-        // Update Course Details
-        // app.patch()
-
-
         /**********************************
-         * ****** JWT RELATED API *******
-         ********************************/
-        app.post('/jwt', (req, res) => {
-
-            const user = req.body
-
-            const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRECT,
-                { expiresIn: '12h' }
-            )
-            res.send({ token })
-        })
-
-        /**********************************
-         * ******  *******
+         * ****** All Role *******
          ********************************/
         // Post User When created a new User
         app.post('/users', async (req, res) => {
@@ -345,8 +340,9 @@ async function run() {
 
 
         /**********************************
-        *** SELECTED COURSE RELATED API ***
+        *** User Role  RELATED API ***
         ********************************/
+        //    Seleted Course
         // get Selected Course when user select
         app.get('/selected-courses', verifyJwtToken, async (req, res) => {
 
@@ -384,7 +380,20 @@ async function run() {
             res.send(result)
         })
 
-        // Payment Related API
+        //    Enrole Course
+        app.get('/book-course', async (req, res) => {
+
+            const email = req.query.email
+
+            const query = { email }
+
+            const result = await paymentCollection.find(query).toArray()
+            res.send(result)
+        })
+
+        /**********************************
+       *** Payment Related API ***
+       ********************************/
         // Payment Intent
         app.post("/create-payment-intent", verifyJwtToken, async (req, res) => {
             const { price } = req.body;
@@ -418,7 +427,6 @@ async function run() {
 
             const _id = req.params._id
             const body = req.body
-            console.log('update', body, _id);
 
             const filter = { _id: new ObjectId(_id) }
 
